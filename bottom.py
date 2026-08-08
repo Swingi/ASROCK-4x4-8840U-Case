@@ -8,6 +8,9 @@ from config import (
     FOOT_HEIGHT,
     FOOT_DIAMETER,
     FOOT_INSET,
+    ROD_HOLE_DIAMETER,
+    ROD_HOLE_X,
+    ROD_HOLE_Y,
     LATTICE_X,
     LATTICE_Y,
     LATTICE_SLOT_WIDTH,
@@ -44,6 +47,19 @@ def _cut_lamella_slots(shape):
     return shape
 
 
+def _cut_threaded_rod_holes(shape):
+    """Cut the four M4 clearance holes taken from the supplied Noctua FCStd."""
+    for x in (ROD_HOLE_X, BASE_X - ROD_HOLE_X):
+        for y in (ROD_HOLE_Y, BASE_Y - ROD_HOLE_Y):
+            hole = Part.makeCylinder(
+                ROD_HOLE_DIAMETER / 2.0,
+                BASE_THICKNESS + 2.0,
+                App.Vector(x, y, -1.0),
+            )
+            shape = shape.cut(hole)
+    return shape
+
+
 def _add_feet(shape):
     """Fuse four integral cylindrical feet to the underside of the plate."""
     for x in (FOOT_INSET, BASE_X - FOOT_INSET):
@@ -58,62 +74,40 @@ def _add_feet(shape):
 
 
 def _add_wall_guides(shape):
-    """Create four continuous plug-in guide rails around the perimeter.
-
-    The later one-piece lid+wall assembly will slide into the central channel.
-    The channel width is WALL_THICKNESS + 2 * WALL_CLEARANCE.
-    """
+    """Create four continuous plug-in guide rails around the perimeter."""
     channel = WALL_THICKNESS + 2.0 * WALL_CLEARANCE
     outer = GUIDE_EDGE
     inner = outer + GUIDE_RAIL_WIDTH + channel
-
-    # Each side uses two parallel rails. They deliberately stop short of the
-    # corners; corner posts tie the system together and add stiffness.
     side_len = BASE_X - 2.0 * GUIDE_EDGE
-
     rails = []
 
-    # Front / rear rails.
     for y in (outer, inner):
         rails.append(Part.makeBox(
-            side_len,
-            GUIDE_RAIL_WIDTH,
-            GUIDE_HEIGHT,
+            side_len, GUIDE_RAIL_WIDTH, GUIDE_HEIGHT,
             App.Vector(GUIDE_EDGE, y, BASE_THICKNESS),
         ))
         rails.append(Part.makeBox(
-            side_len,
-            GUIDE_RAIL_WIDTH,
-            GUIDE_HEIGHT,
+            side_len, GUIDE_RAIL_WIDTH, GUIDE_HEIGHT,
             App.Vector(GUIDE_EDGE, BASE_Y - y - GUIDE_RAIL_WIDTH, BASE_THICKNESS),
         ))
 
-    # Left / right rails.
     for x in (outer, inner):
         rails.append(Part.makeBox(
-            GUIDE_RAIL_WIDTH,
-            side_len,
-            GUIDE_HEIGHT,
+            GUIDE_RAIL_WIDTH, side_len, GUIDE_HEIGHT,
             App.Vector(x, GUIDE_EDGE, BASE_THICKNESS),
         ))
         rails.append(Part.makeBox(
-            GUIDE_RAIL_WIDTH,
-            side_len,
-            GUIDE_HEIGHT,
+            GUIDE_RAIL_WIDTH, side_len, GUIDE_HEIGHT,
             App.Vector(BASE_X - x - GUIDE_RAIL_WIDTH, GUIDE_EDGE, BASE_THICKNESS),
         ))
 
     for rail in rails:
         shape = shape.fuse(rail)
 
-    # Solid corner posts connect the rails and prevent the wall guides from
-    # flexing when the lid is plugged on/off.
     for x in (GUIDE_EDGE, BASE_X - GUIDE_EDGE - CORNER_POST_SIZE):
         for y in (GUIDE_EDGE, BASE_Y - GUIDE_EDGE - CORNER_POST_SIZE):
             post = Part.makeBox(
-                CORNER_POST_SIZE,
-                CORNER_POST_SIZE,
-                GUIDE_HEIGHT,
+                CORNER_POST_SIZE, CORNER_POST_SIZE, GUIDE_HEIGHT,
                 App.Vector(x, y, BASE_THICKNESS),
             )
             shape = shape.fuse(post)
@@ -125,6 +119,7 @@ def make_bottom():
     """Return the complete printable bottom as one fused FreeCAD Shape."""
     shape = Part.makeBox(BASE_X, BASE_Y, BASE_THICKNESS)
     shape = _cut_lamella_slots(shape)
+    shape = _cut_threaded_rod_holes(shape)
     shape = _add_feet(shape)
     shape = _add_wall_guides(shape)
     return shape.removeSplitter()
