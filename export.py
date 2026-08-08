@@ -12,9 +12,25 @@ def export_shape(shape, directory, name):
     return step_path, stl_path
 
 
-if __name__ == "__main__":
+def build(root):
     from bottom import make_base
     from lid import make_lid
-    root = os.path.dirname(os.path.abspath(__file__))
-    export_shape(make_base(), os.path.join(root, "step"), "base")
-    export_shape(make_lid(), os.path.join(root, "step"), "lid")
+
+    step_dir = os.path.join(root, "step")
+    stl_dir = os.path.join(root, "stl")
+
+    base = make_base()
+    lid = make_lid()
+
+    export_shape(base, step_dir, "base")
+    export_shape(base, stl_dir, "base")
+    export_shape(lid, step_dir, "lid")
+    export_shape(lid, stl_dir, "lid")
+
+    return base, lid
+
+
+if __name__ == "__main__":
+    root = r"D:/Download/ASROCK Box 4x4 8840U/repo/ASROCK-4x4-8840U-Case-main"
+    build(root)
+    print("ASROCK 4x4 export completed:", root)
