@@ -9,10 +9,9 @@ FOOT_HEIGHT = 40.0
 FOOT_DIAMETER = 16.0
 FOOT_INSET = 15.0
 
-# Four M4 clearance holes for the threaded rods.
-# Taken from the uploaded Noctua Venti.FCStd:
-# hole centres are 62.25 mm from the fan centre, giving 22.75 mm
-# from each 170 mm bottom edge. The FCStd hole diameter is 4.30 mm.
+# Four threaded-rod clearance holes.
+# Dimensions taken from the supplied Noctua Venti.FCStd reference.
+# Hole centres are 22.75 mm from each 170 mm outside edge.
 ROD_HOLE_DIAMETER = 4.30
 ROD_HOLE_X = 22.75
 ROD_HOLE_Y = 22.75
