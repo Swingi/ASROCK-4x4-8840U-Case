@@ -1,11 +1,18 @@
 import os
+import sys
 import FreeCAD as App
 import Part
 
+# IMPORTANT: FreeCAD's Python console does not define __file__ when this
+# script is launched with exec(open(...).read()). Therefore the project
+# directory is configured explicitly here for the current local checkout.
+PROJECT_DIR = r"D:/Download/ASROCK Box 4x4 8840U/repo/ASROCK-4x4-8840U-Case-main"
+
+if PROJECT_DIR not in sys.path:
+    sys.path.insert(0, PROJECT_DIR)
+
 from bottom import create_document
 
-
-PROJECT_DIR = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else os.getcwd()
 OUTPUT_DIR = os.path.join(PROJECT_DIR, "output")
 STEP_DIR = os.path.join(OUTPUT_DIR, "step")
 STL_DIR = os.path.join(OUTPUT_DIR, "stl")
