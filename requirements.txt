@@ -1,0 +1,2 @@
+# FreeCAD is required to execute the CAD scripts.
+# Tested conceptually against the FreeCAD Python API.
