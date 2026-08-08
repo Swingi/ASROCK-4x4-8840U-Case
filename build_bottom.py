@@ -1,15 +1,22 @@
 import os
 import sys
+import importlib
 import FreeCAD as App
 import Part
 
-# IMPORTANT: FreeCAD's Python console does not define __file__ when this
-# script is launched with exec(open(...).read()). Therefore the project
-# directory is configured explicitly here for the current local checkout.
+# FreeCAD's Python console does not define __file__ when this script is
+# launched with exec(open(...).read()). The local checkout is configured here.
 PROJECT_DIR = r"D:/Download/ASROCK Box 4x4 8840U/repo/ASROCK-4x4-8840U-Case-main"
 
 if PROJECT_DIR not in sys.path:
     sys.path.insert(0, PROJECT_DIR)
+
+# FreeCAD keeps imported Python modules in sys.modules. This matters when
+# config.py was changed and the build script is executed again in the same
+# FreeCAD session. Force a fresh load of config.py and bottom.py.
+for module_name in ("bottom", "config"):
+    if module_name in sys.modules:
+        del sys.modules[module_name]
 
 from bottom import create_document
 
