@@ -16,75 +16,61 @@ for _name in dir(config):
 def _cut_rod_passages(shape):
     for x in (ROD_OFFSET_X, BASE_X - ROD_OFFSET_X):
         for y in (ROD_OFFSET_Y, BASE_Y - ROD_OFFSET_Y):
-            hole = Part.makeCylinder(
-                ROD_PASSAGE_DIAMETER / 2.0,
-                LID_TOP_THICKNESS + 2.0,
-                App.Vector(x, y, LID_TOP_Z - 1.0),
-            )
+            hole = Part.makeCylinder(ROD_PASSAGE_DIAMETER / 2.0,
+                                     LID_TOP_THICKNESS + 2.0,
+                                     App.Vector(x, y, LID_TOP_Z - 1.0))
             shape = shape.cut(hole)
     return shape
 
 
 def _cut_fan_opening(shape):
-    cx = BASE_X / 2.0
-    cy = BASE_Y / 2.0
-    opening = Part.makeCylinder(
-        FAN_OPENING_DIAMETER / 2.0,
-        LID_TOP_THICKNESS + 2.0,
-        App.Vector(cx, cy, LID_TOP_Z - 1.0),
-    )
+    opening = Part.makeCylinder(FAN_OPENING_DIAMETER / 2.0,
+                                LID_TOP_THICKNESS + 2.0,
+                                App.Vector(BASE_X / 2.0, BASE_Y / 2.0,
+                                           LID_TOP_Z - 1.0))
     return shape.cut(opening)
 
 
 def _cut_fan_mount_holes(shape):
-    cx = BASE_X / 2.0
-    cy = BASE_Y / 2.0
+    cx, cy = BASE_X / 2.0, BASE_Y / 2.0
     d = FAN_MOUNT_HOLE_SPACING / 2.0
     for x in (cx - d, cx + d):
         for y in (cy - d, cy + d):
-            hole = Part.makeCylinder(
-                FAN_MOUNT_HOLE_DIAMETER / 2.0,
-                LID_TOP_THICKNESS + 2.0,
-                App.Vector(x, y, LID_TOP_Z - 1.0),
-            )
+            hole = Part.makeCylinder(FAN_MOUNT_HOLE_DIAMETER / 2.0,
+                                     LID_TOP_THICKNESS + 2.0,
+                                     App.Vector(x, y, LID_TOP_Z - 1.0))
             shape = shape.cut(hole)
     return shape
 
 
 def _cut_io_openings(shape):
-    """Open the real front and rear motherboard I/O sides.
-
-    Front contains power, 2x USB-C, USB-A and audio. Rear contains 2x HDMI,
-    dual LAN, 2x USB2 and DC-in. The openings are intentionally generous for
-    connector shells and are parameterized in config.py for final FCStd fit.
-    """
-    front = Part.makeBox(
-        FRONT_IO_WIDTH, WALL_THICKNESS + 4.0, FRONT_IO_HEIGHT,
-        App.Vector((BASE_X - FRONT_IO_WIDTH) / 2.0, -2.0, FRONT_IO_Z),
-    )
-    rear = Part.makeBox(
-        REAR_IO_WIDTH, WALL_THICKNESS + 4.0, REAR_IO_HEIGHT,
-        App.Vector((BASE_X - REAR_IO_WIDTH) / 2.0,
-                   BASE_Y - WALL_THICKNESS - 2.0, REAR_IO_Z),
-    )
+    """Front and rear openings for the actual motherboard connector groups."""
+    front = Part.makeBox(FRONT_IO_WIDTH, WALL_THICKNESS + 4.0, FRONT_IO_HEIGHT,
+                         App.Vector((BASE_X - FRONT_IO_WIDTH) / 2.0,
+                                    -2.0, FRONT_IO_Z))
+    rear = Part.makeBox(REAR_IO_WIDTH, WALL_THICKNESS + 4.0, REAR_IO_HEIGHT,
+                        App.Vector((BASE_X - REAR_IO_WIDTH) / 2.0,
+                                   BASE_Y - WALL_THICKNESS - 2.0,
+                                   REAR_IO_Z))
     return shape.cut(front).cut(rear)
 
 
 def _cut_side_vents(shape):
-    """Large side ventilation fields, leaving structural corner posts."""
+    """Vent/filter fields only on left and right side walls.
+
+    Front and rear remain structurally closed except for their motherboard
+    I/O openings, so the connector locations stay visible and accessible.
+    """
     margin = 22.0
     z0 = LID_Z0 + 8.0
     height = SIDE_WALL_HEIGHT - 16.0
-    width = BASE_X - 2.0 * margin
+    width = BASE_Y - 2.0 * margin
     cuts = [
-        Part.makeBox(width, WALL_THICKNESS + 2.0, height,
-                     App.Vector(margin, -1.0, z0)),
-        Part.makeBox(width, WALL_THICKNESS + 2.0, height,
-                     App.Vector(margin, BASE_Y - WALL_THICKNESS - 1.0, z0)),
         Part.makeBox(WALL_THICKNESS + 2.0, width, height,
                      App.Vector(-1.0, margin, z0)),
         Part.makeBox(WALL_THICKNESS + 2.0, width, height,
-                     App.Vector(BASE_X - WALL_THICKNESS - 1.0, margin, z0)),
+                     App.Vector(BASE_X - WALL_THICKNESS - 1.0,
+                                margin, z0)),
     ]
     for cut in cuts:
         shape = shape.cut(cut)
@@ -92,16 +78,12 @@ def _cut_side_vents(shape):
 
 
 def _add_filter_seats(shape):
-    """Create retaining ledges for removable mesh filters on top and sides."""
-    # Top filter: a 144 mm square mesh sits on a 2.5 mm recessed ledge around the fan opening.
-    cx = BASE_X / 2.0
-    cy = BASE_Y / 2.0
+    """Integrated retaining rails for removable mesh filters on top and sides."""
+    # Top: square filter frame around the 140 mm fan opening.
+    cx, cy = BASE_X / 2.0, BASE_Y / 2.0
     outer = TOP_FILTER_SIZE / 2.0
-    inner = FAN_OPENING_DIAMETER / 2.0 + 2.0
-    z = LID_TOP_Z + LID_TOP_THICKNESS - 1.0
-
-    # Four narrow rails around the circular fan opening, on the outside face.
     rail_w = TOP_FILTER_FRAME_WIDTH
+    z = LID_TOP_Z + LID_TOP_THICKNESS
     rails = [
         Part.makeBox(TOP_FILTER_SIZE, rail_w, TOP_FILTER_FRAME_THICKNESS,
                      App.Vector(cx - outer, cy - outer, z)),
@@ -115,46 +97,34 @@ def _add_filter_seats(shape):
     for rail in rails:
         shape = shape.fuse(rail)
 
-    # Side filter retaining rails sit outside each vent field.
+    # Left/right side filter frames around the vent openings.
     margin = 22.0
-    vent_w = BASE_X - 2 * margin
+    vent_len = BASE_Y - 2.0 * margin
     vent_h = SIDE_WALL_HEIGHT - 16.0
     z0 = LID_Z0 + 8.0
-    fw = SIDE_FILTER_FRAME_THICKNESS
     frame = 3.0
+    rail_t = SIDE_FILTER_FRAME_THICKNESS
 
-    # Front/rear horizontal and vertical filter rails.
-    for y in (-fw, BASE_Y):
-        for x in (margin - frame, BASE_X - margin):
-            shape = shape.fuse(Part.makeBox(frame, fw, vent_h + 2 * frame,
-                                            App.Vector(x, y, z0 - frame)))
-        shape = shape.fuse(Part.makeBox(vent_w + 2 * frame, fw, frame,
-                                        App.Vector(margin - frame, y, z0 - frame)))
-        shape = shape.fuse(Part.makeBox(vent_w + 2 * frame, fw, frame,
-                                        App.Vector(margin - frame, y, z0 + vent_h)))
-
-    # Left/right filter rails.
-    for x in (-fw, BASE_X):
-        for y in (margin - frame, BASE_Y - margin):
-            shape = shape.fuse(Part.makeBox(fw, frame, vent_h + 2 * frame,
-                                            App.Vector(x, y, z0 - frame)))
-        shape = shape.fuse(Part.makeBox(fw, vent_w + 2 * frame, frame,
+    for x in (-rail_t, BASE_X):
+        # vertical rails
+        shape = shape.fuse(Part.makeBox(rail_t, frame, vent_h + 2 * frame,
                                         App.Vector(x, margin - frame, z0 - frame)))
-        shape = shape.fuse(Part.makeBox(fw, vent_w + 2 * frame, frame,
-                                        App.Vector(x, margin - frame, z0 + vent_h)))
+        shape = shape.fuse(Part.makeBox(rail_t, frame, vent_h + 2 * frame,
+                                        App.Vector(x, BASE_Y - margin, z0 - frame)))
+        # horizontal rails
+        shape = shape.fuse(Part.makeBox(rail_t, vent_len, frame,
+                                        App.Vector(x, margin, z0 - frame)))
+        shape = shape.fuse(Part.makeBox(rail_t, vent_len, frame,
+                                        App.Vector(x, margin, z0 + vent_h)))
     return shape
 
 
 def _add_logo_recess(shape):
     """Shallow centered front recess for the supplied STAR WARS GALAXIES signet."""
-    logo_w = 82.0
-    logo_h = 48.0
-    logo_depth = 1.2
+    logo_w, logo_h = 82.0, 48.0
     x = (BASE_X - logo_w) / 2.0
-    y = -0.1
     z = LID_Z0 + SIDE_WALL_HEIGHT - 54.0
-    recess = Part.makeBox(logo_w, logo_depth + 0.5, logo_h,
-                          App.Vector(x, y, z))
+    recess = Part.makeBox(logo_w, 1.7, logo_h, App.Vector(x, -0.1, z))
     return shape.cut(recess)
 
 
@@ -162,9 +132,8 @@ def _add_corner_posts(shape):
     rib = 8.0
     for x in (0.0, BASE_X - rib):
         for y in (0.0, BASE_Y - rib):
-            block = Part.makeBox(rib, rib, SIDE_WALL_HEIGHT,
-                                 App.Vector(x, y, LID_Z0))
-            shape = shape.fuse(block)
+            shape = shape.fuse(Part.makeBox(rib, rib, SIDE_WALL_HEIGHT,
+                                            App.Vector(x, y, LID_Z0)))
     return shape
 
 
@@ -172,34 +141,21 @@ def _add_guide_tongues(shape):
     tongue_h = min(GUIDE_HEIGHT - 1.0, 10.0)
     tongue_w = WALL_THICKNESS
     z = LID_Z0
-    x_positions = (
-        GUIDE_EDGE + GUIDE_RAIL_WIDTH + WALL_CLEARANCE,
-        BASE_X - GUIDE_EDGE - GUIDE_RAIL_WIDTH - WALL_CLEARANCE - tongue_w,
-    )
-    y_positions = (
-        GUIDE_EDGE + GUIDE_RAIL_WIDTH + WALL_CLEARANCE,
-        BASE_Y - GUIDE_EDGE - GUIDE_RAIL_WIDTH - WALL_CLEARANCE - tongue_w,
-    )
+    x_positions = (GUIDE_EDGE + GUIDE_RAIL_WIDTH + WALL_CLEARANCE,
+                   BASE_X - GUIDE_EDGE - GUIDE_RAIL_WIDTH - WALL_CLEARANCE - tongue_w)
+    y_positions = (GUIDE_EDGE + GUIDE_RAIL_WIDTH + WALL_CLEARANCE,
+                   BASE_Y - GUIDE_EDGE - GUIDE_RAIL_WIDTH - WALL_CLEARANCE - tongue_w)
     for x in x_positions:
-        shape = shape.fuse(Part.makeBox(
-            tongue_w, BASE_Y - 2.0 * GUIDE_EDGE, tongue_h,
-            App.Vector(x, GUIDE_EDGE, z)))
+        shape = shape.fuse(Part.makeBox(tongue_w, BASE_Y - 2 * GUIDE_EDGE,
+                                         tongue_h, App.Vector(x, GUIDE_EDGE, z)))
     for y in y_positions:
-        shape = shape.fuse(Part.makeBox(
-            BASE_X - 2.0 * GUIDE_EDGE, tongue_w, tongue_h,
-            App.Vector(GUIDE_EDGE, y, z)))
+        shape = shape.fuse(Part.makeBox(BASE_X - 2 * GUIDE_EDGE, tongue_w,
+                                         tongue_h, App.Vector(GUIDE_EDGE, y, z)))
     return shape
 
 
 def _add_airflow_transition_baffles(shape):
-    """Add thin internal transition vanes from the 140 mm fan region toward
-    the 104 x 102 mm board envelope and back outward toward the lower region.
-
-    They are thin guide surfaces rather than solid partitions, leaving the
-    central airflow path open.
-    """
-    # Front/rear baffles: wide at the fan plane, narrow around board height,
-    # then wide again near the lower exhaust region.
+    """Thin internal baffles create the requested wide-to-board-to-wide transition."""
     zt = AIRFLOW_TRANSITION_TOP_Z
     zm = AIRFLOW_TRANSITION_BOARD_Z
     zb = AIRFLOW_TRANSITION_BOTTOM_Z
@@ -214,13 +170,12 @@ def _add_airflow_transition_baffles(shape):
         pts.append(pts[0])
         return Part.Face(Part.makePolygon(pts)).extrude(App.Vector(0, t, 0))
 
-    # Two sloped front/rear guide sheets, one on each side of the central path.
-    for y0 in (WALL_THICKNESS + 2.0, BASE_Y - WALL_THICKNESS - 2.0 - t):
-        p1 = [(top_l, zt), (mid_l, zm), (mid_l, zb), (top_l, zb)]
-        p2 = [(mid_r, zm), (top_r, zt), (top_r, zb), (mid_r, zb)]
-        shape = shape.fuse(prism_xz(p1, y0)).fuse(prism_xz(p2, y0))
+    for y0 in (WALL_THICKNESS + 2.0,
+               BASE_Y - WALL_THICKNESS - 2.0 - t):
+        left = [(top_l, zt), (mid_l, zm), (mid_l, zb), (top_l, zb)]
+        right = [(mid_r, zm), (top_r, zt), (top_r, zb), (mid_r, zb)]
+        shape = shape.fuse(prism_xz(left, y0)).fuse(prism_xz(right, y0))
 
-    # Left/right guide sheets use the 102 mm board dimension.
     top_b = (BASE_Y - FAN_SIZE) / 2.0
     top_t = BASE_Y - top_b
     mid_b = (BASE_Y - MAINBOARD_Y) / 2.0
@@ -231,14 +186,16 @@ def _add_airflow_transition_baffles(shape):
         pts.append(pts[0])
         return Part.Face(Part.makePolygon(pts)).extrude(App.Vector(t, 0, 0))
 
-    for x0 in (WALL_THICKNESS + 2.0, BASE_X - WALL_THICKNESS - 2.0 - t):
-        p1 = [(top_b, zt), (mid_b, zm), (mid_b, zb), (top_b, zb)]
-        p2 = [(mid_t, zm), (top_t, zt), (top_t, zb), (mid_t, zb)]
-        shape = shape.fuse(prism_yz(p1, x0)).fuse(prism_yz(p2, x0))
+    for x0 in (WALL_THICKNESS + 2.0,
+               BASE_X - WALL_THICKNESS - 2.0 - t):
+        low = [(top_b, zt), (mid_b, zm), (mid_b, zb), (top_b, zb)]
+        high = [(mid_t, zm), (top_t, zt), (top_t, zb), (mid_t, zb)]
+        shape = shape.fuse(prism_yz(low, x0)).fuse(prism_yz(high, x0))
     return shape
 
 
 def make_lid():
+    # Top + all four walls are one fused printable part.
     top = Part.makeBox(BASE_X, BASE_Y, LID_TOP_THICKNESS,
                        App.Vector(0, 0, LID_TOP_Z))
     front = Part.makeBox(BASE_X, WALL_THICKNESS, SIDE_WALL_HEIGHT,
